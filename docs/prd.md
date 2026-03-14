@@ -32,4 +32,6 @@ Supabase should handle the main backend responsibilities, including PostgreSQL d
 - Ticket verification required before attendance visibility
 - Matches only exist within a specific event
 - Matches expire after the event date passes
-- Safety and moderation features are required in MVP
+- Safety and moderation features are required in MVP.
+
+*File recreated with proper formatting*
