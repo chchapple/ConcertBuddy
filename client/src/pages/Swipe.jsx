@@ -1,16 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Heart, X, Star, Car, SlidersHorizontal } from 'lucide-react'
+import { getEvent, getEventAttendees } from '../api/index.js'
 import { EVENTS, PROFILES } from '../data/mockData'
+
+function normalizeProfile(p) {
+  return {
+    ...p,
+    displayName:    p.displayName    ?? p.display_name,
+    photoUrl:       p.photoUrl       ?? p.photo_url,
+    avgRating:      p.avgRating      ?? p.avg_rating,
+    hasRide:        p.hasRide        ?? p.has_ride ?? false,
+    favoriteArtists: p.favoriteArtists ?? p.favorite_artists ?? [],
+    favoriteGenres:  p.favoriteGenres  ?? p.favorite_genres  ?? [],
+    age:            p.age ?? 0,
+    gender:         p.gender ?? '',
+    bio:            p.bio ?? '',
+  }
+}
 
 export default function Swipe() {
   const { id } = useParams()
-  const event = EVENTS.find(e => e.id === id)
-
-  const [deck, setDeck] = useState(PROFILES.slice(1))
+  const [event, setEvent] = useState(null)
+  const [deck, setDeck] = useState([])
+  const [loading, setLoading] = useState(true)
   const [current, setCurrent] = useState(0)
   const [filters, setFilters] = useState({ showFilters: false, rideOnly: false, maxAge: 100, minAge: 18 })
   const [lastAction, setLastAction] = useState(null)
+
+  useEffect(() => {
+    Promise.all([getEvent(id), getEventAttendees(id)])
+      .then(([ev, att]) => {
+        setEvent(ev)
+        setDeck(att.map(normalizeProfile))
+      })
+      .catch(() => {
+        setEvent(EVENTS.find(e => e.id === id) || null)
+        setDeck(PROFILES.slice(1).map(normalizeProfile))
+      })
+      .finally(() => setLoading(false))
+  }, [id])
 
   const filtered = deck.filter(p => {
     if (filters.rideOnly && !p.hasRide) return false
@@ -28,7 +57,8 @@ export default function Swipe() {
     }, 350)
   }
 
-  if (!event) return <p className="text-gray-400 text-center py-20">Event not found.</p>
+  if (loading) return <p className="text-gray-400 text-center py-20">Loading…</p>
+  if (!event)  return <p className="text-gray-400 text-center py-20">Event not found.</p>
 
   return (
     <div>

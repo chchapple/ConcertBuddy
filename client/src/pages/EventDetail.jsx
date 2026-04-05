@@ -1,18 +1,55 @@
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { CalendarDays, MapPin, Users, Ticket, Star } from 'lucide-react'
+import { getEvent, getEventAttendees } from '../api/index.js'
 import { EVENTS, PROFILES } from '../data/mockData'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+function normalizeEvent(e) {
+  return {
+    ...e,
+    venueName: e.venueName ?? e.venues?.name ?? '',
+    eventDate: e.eventDate ?? e.event_date,
+    posterUrl: e.posterUrl ?? e.poster_url ?? `https://picsum.photos/seed/${e.id}/400/220`,
+    ticketUrl: e.ticketUrl ?? e.ticket_url ?? '#',
+  }
+}
+
+function normalizeProfile(p) {
+  return {
+    ...p,
+    displayName: p.displayName ?? p.display_name,
+    photoUrl:    p.photoUrl    ?? p.photo_url,
+    avgRating:   p.avgRating   ?? p.avg_rating,
+    favoriteGenres: p.favoriteGenres ?? p.favorite_genres ?? [],
+  }
+}
+
 export default function EventDetail() {
   const { id } = useParams()
-  const event = EVENTS.find(e => e.id === id)
+  const [event, setEvent] = useState(null)
+  const [attendees, setAttendees] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  if (!event) return <p className="text-gray-400 text-center py-20">Event not found.</p>
+  useEffect(() => {
+    Promise.all([getEvent(id), getEventAttendees(id)])
+      .then(([ev, att]) => {
+        setEvent(normalizeEvent(ev))
+        setAttendees(att.map(normalizeProfile))
+      })
+      .catch(() => {
+        const mock = EVENTS.find(e => e.id === id)
+        setEvent(mock || null)
+        setAttendees(PROFILES.slice(1, 4))
+      })
+      .finally(() => setLoading(false))
+  }, [id])
 
-  const attendees = PROFILES.slice(1, 4)
+  if (loading) return <p className="text-gray-400 text-center py-20">Loading…</p>
+  if (!event)   return <p className="text-gray-400 text-center py-20">Event not found.</p>
 
   return (
     <div>
