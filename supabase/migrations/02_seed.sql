@@ -64,9 +64,43 @@ insert into events (id, venue_id, artist, description, event_date) values
 on conflict (id) do nothing;
 
 -- =============================================================
+-- AUTH USERS (required before profiles due to FK constraint)
+-- Inserts placeholder rows directly into auth.users so profiles
+-- can reference them without going through Supabase Auth sign-up.
+-- =============================================================
+insert into auth.users (
+  id, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data,
+  aud, role, created_at, updated_at
+) values
+  ('c1000000-0000-0000-0000-000000000001',
+   'alex@example.com', crypt('password123', gen_salt('bf')),
+   now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+   'authenticated', 'authenticated', now(), now()),
+
+  ('c1000000-0000-0000-0000-000000000002',
+   'jordan@example.com', crypt('password123', gen_salt('bf')),
+   now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+   'authenticated', 'authenticated', now(), now()),
+
+  ('c1000000-0000-0000-0000-000000000003',
+   'sam@example.com', crypt('password123', gen_salt('bf')),
+   now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+   'authenticated', 'authenticated', now(), now()),
+
+  ('c1000000-0000-0000-0000-000000000004',
+   'morgan@example.com', crypt('password123', gen_salt('bf')),
+   now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+   'authenticated', 'authenticated', now(), now()),
+
+  ('c1000000-0000-0000-0000-000000000005',
+   'casey@example.com', crypt('password123', gen_salt('bf')),
+   now(), '{"provider":"email","providers":["email"]}'::jsonb, '{}'::jsonb,
+   'authenticated', 'authenticated', now(), now())
+on conflict (id) do nothing;
+
+-- =============================================================
 -- PROFILES (5 seed users)
--- Requires matching rows in auth.users; in the SQL editor you can
--- temporarily disable the FK check or insert into auth.users first.
 -- =============================================================
 insert into profiles (id, display_name, bio, age, gender, favorite_artists, favorite_genres, has_ride, photo_url) values
   ('c1000000-0000-0000-0000-000000000001',
