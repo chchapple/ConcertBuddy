@@ -1,0 +1,526 @@
+openapi: 3.0.3
+info:
+  title: ConcertBuddy API
+  version: 0.1.0
+  description: REST API for the ConcertBuddy application — connects solo concert-goers attending the same event.
+
+servers:
+  - url: http://localhost:3001
+    description: Local development
+
+tags:
+  - name: health
+  - name: events
+  - name: profiles
+  - name: attendance
+  - name: matches
+  - name: messages
+  - name: reports
+
+paths:
+
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  ts:     { type: string, format: date-time }
+
+  # ── EVENTS ─────────────────────────────────────────────────────────────────
+
+  /api/events:
+    get:
+      tags: [events]
+      summary: List upcoming events
+      parameters:
+        - in: query
+          name: artist
+          schema: { type: string }
+          description: Filter by artist name (case-insensitive partial match)
+        - in: query
+          name: venue
+          schema: { type: string }
+          description: Filter by venue name
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+          description: Filter by exact date (YYYY-MM-DD)
+      responses:
+        "200":
+          description: Array of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Event' }
+
+  /api/events/{id}:
+    get:
+      tags: [events]
+      summary: Get a single event
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Event object
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Event' }
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /api/events/{id}/attendees:
+    get:
+      tags: [events]
+      summary: List verified attendees for an event
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Array of profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Profile' }
+
+  # ── PROFILES ───────────────────────────────────────────────────────────────
+
+  /api/profiles:
+    post:
+      tags: [profiles]
+      summary: Create a user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileCreate' }
+            example:
+              id: "c1000000-0000-0000-0000-000000000001"
+              display_name: "Alex Rivera"
+              age: 26
+              gender: "man"
+              bio: "Huge synth-pop fan!"
+              favorite_artists: ["The Midnight", "Chvrches"]
+              favorite_genres: ["synthwave", "indie-pop"]
+              has_ride: true
+      responses:
+        "201":
+          description: Created profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        "400":
+          $ref: '#/components/responses/BadRequest'
+
+  /api/profiles/{id}:
+    get:
+      tags: [profiles]
+      summary: Get a single profile
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Profile object
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        "404":
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [profiles]
+      summary: Update a profile
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileUpdate' }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  # ── ATTENDANCE ─────────────────────────────────────────────────────────────
+
+  /api/attendance:
+    get:
+      tags: [attendance]
+      summary: Query attendance records
+      parameters:
+        - in: query
+          name: event_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: user_id
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Array of attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Attendance' }
+    post:
+      tags: [attendance]
+      summary: Register attendance for an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, event_id]
+              properties:
+                user_id:         { type: string, format: uuid }
+                event_id:        { type: string, format: uuid }
+                ticket_verified: { type: boolean, default: false }
+      responses:
+        "201":
+          description: Attendance record created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attendance' }
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "409":
+          description: Already registered for this event
+
+  # ── MATCHES ────────────────────────────────────────────────────────────────
+
+  /api/matches:
+    get:
+      tags: [matches]
+      summary: List active matches for a user
+      parameters:
+        - in: query
+          name: user_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Array of match objects
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Match' }
+        "400":
+          $ref: '#/components/responses/BadRequest'
+
+  /api/matches/swipe:
+    post:
+      tags: [matches]
+      summary: Record a swipe; creates a match on mutual like
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [swiper_id, swiped_id, event_id, direction]
+              properties:
+                swiper_id:  { type: string, format: uuid }
+                swiped_id:  { type: string, format: uuid }
+                event_id:   { type: string, format: uuid }
+                direction:  { type: string, enum: [like, pass] }
+      responses:
+        "201":
+          description: Swipe recorded; matched indicates if a match was created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matched: { type: boolean }
+                  match:   { $ref: '#/components/schemas/Match' }
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "409":
+          description: Already swiped on this user for this event
+
+  /api/matches/{id}/unmatch:
+    patch:
+      tags: [matches]
+      summary: Deactivate a match (unmatch)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated match
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Match' }
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  # ── MESSAGES ───────────────────────────────────────────────────────────────
+
+  /api/messages:
+    get:
+      tags: [messages]
+      summary: Get all messages for a match
+      parameters:
+        - in: query
+          name: match_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Array of messages in chronological order
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Message' }
+        "400":
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [messages]
+      summary: Send a message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [match_id, sender_id]
+              properties:
+                match_id:  { type: string, format: uuid }
+                sender_id: { type: string, format: uuid }
+                content:   { type: string }
+                media_url: { type: string, format: uri }
+                msg_type:  { type: string, enum: [text, image], default: text }
+            example:
+              match_id: "d1000000-0000-0000-0000-000000000001"
+              sender_id: "c1000000-0000-0000-0000-000000000001"
+              content: "Hey! See you at the merch table?"
+              msg_type: "text"
+      responses:
+        "201":
+          description: Message created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "403":
+          description: Match is inactive — cannot send messages
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  # ── REPORTS ────────────────────────────────────────────────────────────────
+
+  /api/reports:
+    get:
+      tags: [reports]
+      summary: List reports (admin)
+      parameters:
+        - in: query
+          name: reviewed
+          schema: { type: boolean }
+          description: Filter by reviewed status
+      responses:
+        "200":
+          description: Array of reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Report' }
+    post:
+      tags: [reports]
+      summary: Submit a report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reporter_id, reported_id, reason]
+              properties:
+                reporter_id: { type: string, format: uuid }
+                reported_id: { type: string, format: uuid }
+                event_id:    { type: string, format: uuid }
+                reason:      { type: string }
+      responses:
+        "201":
+          description: Report submitted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        "400":
+          $ref: '#/components/responses/BadRequest'
+
+  /api/reports/{id}/review:
+    patch:
+      tags: [reports]
+      summary: Mark a report as reviewed (admin)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Updated report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+# ── COMPONENTS ───────────────────────────────────────────────────────────────
+
+components:
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+
+    Profile:
+      type: object
+      properties:
+        id:               { type: string, format: uuid }
+        display_name:     { type: string }
+        bio:              { type: string, nullable: true }
+        age:              { type: integer, minimum: 18 }
+        gender:           { type: string, enum: [man, woman, non-binary, "prefer not to say"] }
+        favorite_artists: { type: array, items: { type: string } }
+        favorite_genres:  { type: array, items: { type: string } }
+        has_ride:         { type: boolean }
+        photo_url:        { type: string, format: uri, nullable: true }
+        avg_rating:       { type: number, nullable: true }
+        created_at:       { type: string, format: date-time }
+
+    ProfileCreate:
+      type: object
+      required: [id, display_name, age, gender]
+      properties:
+        id:               { type: string, format: uuid }
+        display_name:     { type: string }
+        bio:              { type: string }
+        age:              { type: integer, minimum: 18, maximum: 100 }
+        gender:           { type: string, enum: [man, woman, non-binary, "prefer not to say"] }
+        favorite_artists: { type: array, items: { type: string } }
+        favorite_genres:  { type: array, items: { type: string } }
+        has_ride:         { type: boolean }
+        photo_url:        { type: string, format: uri }
+
+    ProfileUpdate:
+      type: object
+      properties:
+        display_name:     { type: string }
+        bio:              { type: string }
+        age:              { type: integer, minimum: 18, maximum: 100 }
+        gender:           { type: string, enum: [man, woman, non-binary, "prefer not to say"] }
+        favorite_artists: { type: array, items: { type: string } }
+        favorite_genres:  { type: array, items: { type: string } }
+        has_ride:         { type: boolean }
+        photo_url:        { type: string, format: uri }
+
+    Venue:
+      type: object
+      properties:
+        id:      { type: string, format: uuid }
+        name:    { type: string }
+        address: { type: string }
+        city:    { type: string }
+        state:   { type: string }
+
+    Event:
+      type: object
+      properties:
+        id:          { type: string, format: uuid }
+        artist:      { type: string }
+        description: { type: string, nullable: true }
+        event_date:  { type: string, format: date-time }
+        ticket_url:  { type: string, format: uri, nullable: true }
+        poster_url:  { type: string, format: uri, nullable: true }
+        venues:      { $ref: '#/components/schemas/Venue' }
+
+    Attendance:
+      type: object
+      properties:
+        id:              { type: string, format: uuid }
+        user_id:         { type: string, format: uuid }
+        event_id:        { type: string, format: uuid }
+        ticket_verified: { type: boolean }
+        created_at:      { type: string, format: date-time }
+
+    Match:
+      type: object
+      properties:
+        id:         { type: string, format: uuid }
+        user1_id:   { type: string, format: uuid }
+        user2_id:   { type: string, format: uuid }
+        event_id:   { type: string, format: uuid }
+        active:     { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    Message:
+      type: object
+      properties:
+        id:         { type: string, format: uuid }
+        match_id:   { type: string, format: uuid }
+        sender_id:  { type: string, format: uuid }
+        content:    { type: string, nullable: true }
+        media_url:  { type: string, format: uri, nullable: true }
+        msg_type:   { type: string, enum: [text, image] }
+        created_at: { type: string, format: date-time }
+
+    Report:
+      type: object
+      properties:
+        id:          { type: string, format: uuid }
+        reporter_id: { type: string, format: uuid }
+        reported_id: { type: string, format: uuid }
+        event_id:    { type: string, format: uuid, nullable: true }
+        reason:      { type: string }
+        reviewed:    { type: boolean }
+        reviewed_at: { type: string, format: date-time, nullable: true }
+        created_at:  { type: string, format: date-time }
