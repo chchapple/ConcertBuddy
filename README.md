@@ -1,89 +1,97 @@
 # ConcertBuddy
 
+🔗 **Live App:** [https://master.d3qlak4bwzjgra.amplifyapp.com](https://master.d3qlak4bwzjgra.amplifyapp.com)
+
 ConcertBuddy is a web application designed to help solo concert-goers find and connect with other attendees for a specific live music event. The system supports users in listing the concerts they plan to attend, discovering others going to the same show, and forming temporary event-based connections.
 
 ## Tech Stack
 
-- **Client**: React PWA (Vite for local development)
-- **API**: Express.js (Node.js)
-- **Database**: Supabase
-- **Architecture**: Monorepo with separate client and API services
+- **Frontend**: React + Vite + TailwindCSS — deployed on AWS Amplify
+- **API**: Express.js (Node.js) — deployed on Render
+- **Database**: Supabase (PostgreSQL + Auth + RLS)
+
+## Demo Credentials
+
+| Role | Email | Password |
+|------|-------|----------|
+| Regular user | alex@example.com | password123 |
+| Admin | admin@concertbuddy.app | Admin1234! |
 
 ## Project Structure
 
 ```
 concertbuddy/
-├── client/     # React PWA (local dev: Vite)
-├── api/        # Express API (local dev: Node)
-├── supabase/   # SQL migrations + seeds
-├── docs/       # PRD, site map, OpenAPI, deployment notes
-├── README.md
-└── .gitignore
+├── client/               # React frontend (Vite)
+├── api/                  # Express API
+├── supabase/migrations/  # SQL schema, seed, RLS policies
+├── tests/smoke.sh        # API smoke tests
+├── amplify.yml           # AWS Amplify build config
+├── render.yaml           # Render API deployment config
+└── docs/                 # PRD, task list, OpenAPI spec
 ```
 
-## Getting Started
+## Local Development
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
-- Supabase account
+- Node.js v18+
+- Supabase project with migrations applied
 
-### Installation
+### Setup
 
-1. Clone the repository:
 ```bash
 git clone https://github.com/chchapple/ConcertBuddy.git
 cd ConcertBuddy
-```
 
-2. Install dependencies:
-```bash
-# Client dependencies
+# Install dependencies
 cd client && npm install
-
-# API dependencies
 cd ../api && npm install
-```
 
-3. Set up environment variables:
-```bash
-# Copy environment templates
+# Configure environment
 cp client/.env.example client/.env
 cp api/.env.example api/.env
+# Fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 ```
 
-4. Configure Supabase:
-- Create a new Supabase project
-- Run migrations from the `supabase/` directory
-- Update environment variables with your Supabase credentials
+### Run Migrations (Supabase SQL Editor — in order)
+1. `supabase/migrations/01_schema.sql`
+2. `supabase/migrations/02_seed.sql`
+3. `supabase/migrations/03_policies.sql`
+4. `supabase/migrations/04_l3_schema.sql`
+5. `supabase/migrations/05_l3_seed.sql`
+6. `supabase/migrations/06_l3_policies.sql`
 
-### Development
-
-Start the development servers:
+### Start Dev Servers
 
 ```bash
-# Start API server (port 3001)
-cd api && npm run dev
+# API (port 3001)
+cd api && node src/index.js
 
-# Start client server (port 3000)
+# Client (port 3000)
 cd client && npm run dev
+```
+
+### Smoke Tests
+
+```bash
+BASE_URL=http://localhost:3001 bash tests/smoke.sh
 ```
 
 ## Features
 
-- User authentication and profiles
-- Concert listing and discovery
-- Event-based connections
-- Real-time messaging
-- PWA capabilities for mobile experience
+- Supabase Auth — email/password sign up & sign in
+- Discover upcoming concerts with My Events filter
+- Mark Attending → ticket upload → admin approval flow
+- Card Stack — swipe across all your attended events (Tinder-style)
+- Messages — match-based chat with Buddy Bot notifications
+- Admin Panel — Reports, Ticket Verifications, ID Verifications, Disputes
+- Warning system (3 warnings → suspension) with dispute form
+- Role-based navigation (user vs admin)
 
-## Contributing
+## Known Issues / Incomplete Areas
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details
+- Card Stack swiping does not record the swipe to the database yet (UI only)
+- "It's a Match" popup appears but does not create a real match record
+- Ticket upload uses a URL field (file upload not wired to Supabase Storage)
+- Admin panel shows AdminReports page; full Ticket/ID/Dispute tabs are in progress
+- Email notifications for disputes are not implemented
+- Profile photo upload is placeholder (uses generated avatars)

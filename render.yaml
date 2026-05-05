@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: concertbuddy-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd api && npm install
+    startCommand: cd api && node src/index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: SUPABASE_URL
+        value: https://mdfeduvruxgrdbiehbwn.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
