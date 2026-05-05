@@ -2,12 +2,16 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 
-import eventsRouter    from './routes/events.js'
-import profilesRouter  from './routes/profiles.js'
-import attendanceRouter from './routes/attendance.js'
-import matchesRouter   from './routes/matches.js'
-import messagesRouter  from './routes/messages.js'
-import reportsRouter   from './routes/reports.js'
+import eventsRouter          from './routes/events.js'
+import profilesRouter        from './routes/profiles.js'
+import attendanceRouter      from './routes/attendance.js'
+import matchesRouter         from './routes/matches.js'
+import messagesRouter        from './routes/messages.js'
+import reportsRouter         from './routes/reports.js'
+import ticketsRouter         from './routes/tickets.js'
+import idVerificationsRouter from './routes/idverifications.js'
+import disputesRouter        from './routes/disputes.js'
+import blocksRouter          from './routes/blocks.js'
 
 const app  = express()
 const PORT = process.env.PORT || 3001
@@ -17,12 +21,16 @@ app.use(express.json())
 
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }))
 
-app.use('/api/events',     eventsRouter)
-app.use('/api/profiles',   profilesRouter)
-app.use('/api/attendance', attendanceRouter)
-app.use('/api/matches',    matchesRouter)
-app.use('/api/messages',   messagesRouter)
-app.use('/api/reports',    reportsRouter)
+app.use('/api/events',            eventsRouter)
+app.use('/api/profiles',          profilesRouter)
+app.use('/api/attendance',        attendanceRouter)
+app.use('/api/matches',           matchesRouter)
+app.use('/api/messages',          messagesRouter)
+app.use('/api/reports',           reportsRouter)
+app.use('/api/tickets',           ticketsRouter)
+app.use('/api/id-verifications',  idVerificationsRouter)
+app.use('/api/disputes',          disputesRouter)
+app.use('/api/blocks',            blocksRouter)
 
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }))
 

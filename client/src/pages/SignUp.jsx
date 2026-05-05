@@ -1,13 +1,18 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Music2, ChevronRight } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Music2, ChevronRight, ChevronLeft, Check, Eye, EyeOff } from 'lucide-react'
+import { useAuth } from '../context/AuthContext.jsx'
+import { supabase } from '../lib/supabase.js'
 
 const GENRES = ['indie-rock', 'synthwave', 'folk', 'bedroom-pop', 'electronic', 'indie-pop', 'dream-pop', 'alternative', 'lo-fi', 'indie-folk']
 
 export default function SignUp() {
   const navigate = useNavigate()
+  const { signUp } = useAuth()
   const [step, setStep] = useState(1)
   const [errors, setErrors] = useState({})
+  const [authError, setAuthError] = useState('')
+  const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     email: '', password: '', displayName: '', age: '', gender: '',
     bio: '', favoriteArtists: '', selectedGenres: [], hasRide: false,
@@ -50,8 +55,27 @@ export default function SignUp() {
     if (step === 2 && validateStep2()) setStep(3)
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
+    setAuthError('')
+    setLoading(true)
+    const { data, error } = await signUp(form.email, form.password)
+    if (error) { setAuthError(error.message); setLoading(false); return }
+    const uid = data.user.id
+    const artists = form.favoriteArtists.split(',').map(s => s.trim()).filter(Boolean)
+    await supabase.from('profiles').upsert({
+      id: uid,
+      display_name: form.displayName,
+      age: Number(form.age),
+      gender: form.gender,
+      bio: form.bio,
+      favorite_artists: artists,
+      favorite_genres: form.selectedGenres,
+      has_ride: form.hasRide,
+      photo_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
+      photo_urls: [`https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`],
+    })
+    setLoading(false)
     navigate('/events')
   }
 
@@ -171,16 +195,17 @@ export default function SignUp() {
                 Next <ChevronRight size={16} />
               </button>
             ) : (
-              <button type="submit" className="btn-primary flex-1">
-                Create Account
+              <button type="submit" disabled={loading} className="btn-primary flex-1">
+                {loading ? 'Creating…' : 'Create Account'}
               </button>
             )}
           </div>
         </form>
 
+        {authError && <p className="text-red-400 text-sm mt-2 text-center">{authError}</p>}
         <p className="text-center text-sm text-gray-500 mt-4">
           Already have an account?{' '}
-          <Link to="/events" className="text-brand-400 hover:underline">Sign in</Link>
+          <Link to="/signin" className="text-brand-400 hover:underline">Sign in</Link>
         </p>
       </div>
     </div>

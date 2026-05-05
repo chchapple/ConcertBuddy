@@ -27,8 +27,8 @@ export default function Landing() {
           <Link to="/signup" className="btn-primary flex-1 py-3 text-base">
             Get Started
           </Link>
-          <Link to="/events" className="btn-secondary flex-1 py-3 text-base">
-            Browse Events
+          <Link to="/signin" className="btn-secondary flex-1 py-3 text-base">
+            Sign In
           </Link>
         </div>
       </section>
