@@ -59,24 +59,33 @@ export default function SignUp() {
     e.preventDefault()
     setAuthError('')
     setLoading(true)
-    const { data, error } = await signUp(form.email, form.password)
-    if (error) { setAuthError(error.message); setLoading(false); return }
-    const uid = data.user.id
-    const artists = form.favoriteArtists.split(',').map(s => s.trim()).filter(Boolean)
-    await supabase.from('profiles').upsert({
-      id: uid,
-      display_name: form.displayName,
-      age: Number(form.age),
-      gender: form.gender,
-      bio: form.bio,
-      favorite_artists: artists,
-      favorite_genres: form.selectedGenres,
-      has_ride: form.hasRide,
-      photo_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
-      photo_urls: [`https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`],
-    })
-    setLoading(false)
-    navigate('/events')
+    try {
+      const { data, error } = await signUp(form.email, form.password)
+      if (error) { setAuthError(error.message); setLoading(false); return }
+      const uid = data?.user?.id
+      if (uid) {
+        const artists = form.favoriteArtists.split(',').map(s => s.trim()).filter(Boolean)
+        try {
+          await supabase.from('profiles').upsert({
+            id: uid,
+            display_name: form.displayName || form.email.split('@')[0],
+            age: Number(form.age) || 21,
+            gender: form.gender || 'prefer not to say',
+            bio: form.bio,
+            favorite_artists: artists,
+            favorite_genres: form.selectedGenres,
+            has_ride: form.hasRide,
+            photo_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
+            photo_urls: [`https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`],
+          })
+        } catch (_) { /* profile creation failed, user can fill in later */ }
+      }
+      navigate('/events')
+    } catch (err) {
+      setAuthError(err.message || 'Something went wrong, please try again')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
