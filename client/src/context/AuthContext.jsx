@@ -8,11 +8,15 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const timeout = setTimeout(() => setSession(null), 5000)
+    supabase.auth.getSession().then(({ data }) => {
+      clearTimeout(timeout)
+      setSession(data.session ?? null)
+    }).catch(() => { clearTimeout(timeout); setSession(null) })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s)
+      setSession(s ?? null)
     })
-    return () => subscription.unsubscribe()
+    return () => { subscription.unsubscribe(); clearTimeout(timeout) }
   }, [])
 
   useEffect(() => {
