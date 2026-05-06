@@ -1,21 +1,24 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CURRENT_USER } from '../data/mockData'
+import { useAuth } from '../context/AuthContext.jsx'
+import { supabase } from '../lib/supabase.js'
 
 const GENRES = ['indie-rock', 'synthwave', 'folk', 'bedroom-pop', 'electronic', 'indie-pop', 'dream-pop', 'alternative', 'lo-fi', 'indie-folk']
 
 export default function EditProfile() {
   const navigate = useNavigate()
-  const u = CURRENT_USER
+  const { profile, session, refreshProfile } = useAuth()
   const [errors, setErrors] = useState({})
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [form, setForm] = useState({
-    displayName:     u.displayName,
-    bio:             u.bio || '',
-    age:             String(u.age),
-    gender:          u.gender,
-    favoriteArtists: u.favoriteArtists.join(', '),
-    selectedGenres:  [...u.favoriteGenres],
-    hasRide:         u.hasRide,
+    displayName:     profile?.display_name || '',
+    bio:             profile?.bio || '',
+    age:             String(profile?.age || ''),
+    gender:          profile?.gender || '',
+    favoriteArtists: (profile?.favorite_artists || []).join(', '),
+    selectedGenres:  [...(profile?.favorite_genres || [])],
+    hasRide:         profile?.has_ride || false,
   })
 
   function set(field, value) {
@@ -42,9 +45,29 @@ export default function EditProfile() {
     return Object.keys(e).length === 0
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return
+    setSaving(true)
+    setSaveError('')
+    const uid = session?.user?.id
+    if (!uid) { setSaveError('Not signed in'); setSaving(false); return }
+    const artists = form.favoriteArtists.split(',').map(s => s.trim()).filter(Boolean)
+    const { error } = await supabase.from('profiles').upsert({
+      id: uid,
+      display_name: form.displayName.trim(),
+      bio: form.bio,
+      age: Number(form.age),
+      gender: form.gender,
+      favorite_artists: artists,
+      favorite_genres: form.selectedGenres,
+      has_ride: form.hasRide,
+      photo_url: profile?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
+      photo_urls: profile?.photo_urls || [`https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`],
+    })
+    setSaving(false)
+    if (error) { setSaveError(error.message); return }
+    if (refreshProfile) refreshProfile()
     navigate('/profile')
   }
 
@@ -121,12 +144,13 @@ export default function EditProfile() {
           </div>
         </div>
 
+        {saveError && <p className="text-sm text-red-400">{saveError}</p>}
         <div className="flex gap-3">
           <button type="button" onClick={() => navigate('/profile')} className="btn-secondary flex-1">
             Cancel
           </button>
-          <button type="submit" className="btn-primary flex-1">
-            Save Changes
+          <button type="submit" disabled={saving} className="btn-primary flex-1">
+            {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </form>

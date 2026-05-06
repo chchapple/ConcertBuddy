@@ -41,10 +41,16 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
   }
 
+  async function refreshProfile() {
+    if (!session?.user) return
+    const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle()
+    setProfile(data)
+  }
+
   const loading = session === undefined
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, profile, loading, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )
