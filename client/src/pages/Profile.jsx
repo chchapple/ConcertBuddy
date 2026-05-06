@@ -1,9 +1,14 @@
 import { Link } from 'react-router-dom'
 import { Star, Car, Pencil, Music2 } from 'lucide-react'
-import { CURRENT_USER, MATCHES } from '../data/mockData'
+import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Profile() {
-  const u = CURRENT_USER
+  const { profile, session } = useAuth()
+
+  const displayName = profile?.display_name || session?.user?.email?.split('@')[0] || 'You'
+  const photoUrl = profile?.photo_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session?.user?.id}`
+  const artists = profile?.favorite_artists || []
+  const genres = profile?.favorite_genres || []
 
   return (
     <div>
@@ -14,19 +19,19 @@ export default function Profile() {
         </Link>
       </div>
 
-      {/* Avatar + basics */}
       <div className="card flex gap-5 mb-4">
-        <img src={u.photoUrl} alt={u.displayName} className="w-20 h-20 rounded-2xl object-cover shrink-0" />
+        <img src={photoUrl} alt={displayName} className="w-20 h-20 rounded-2xl object-cover shrink-0" />
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold text-white">{u.displayName}</h2>
-          <p className="text-sm text-gray-400 capitalize">{u.gender} · {u.age}</p>
+          <h2 className="text-xl font-bold text-white">{displayName}</h2>
+          <p className="text-sm text-gray-400 capitalize">{profile?.gender} · {profile?.age}</p>
+          <p className="text-xs text-gray-500 mt-1">{session?.user?.email}</p>
           <div className="flex items-center gap-3 mt-2">
-            {u.avgRating && (
+            {profile?.avg_rating && (
               <span className="flex items-center gap-1 text-sm text-yellow-400">
-                <Star size={14} fill="currentColor" /> {u.avgRating}
+                <Star size={14} fill="currentColor" /> {profile.avg_rating}
               </span>
             )}
-            {u.hasRide && (
+            {profile?.has_ride && (
               <span className="flex items-center gap-1 text-xs text-green-400 bg-green-900/30 px-2 py-1 rounded-full">
                 <Car size={12} /> Has ride
               </span>
@@ -35,45 +40,49 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Bio */}
-      {u.bio && (
+      {profile?.bio && (
         <div className="card mb-4">
           <p className="text-xs text-gray-500 uppercase font-semibold mb-2">About</p>
-          <p className="text-sm text-gray-300">{u.bio}</p>
+          <p className="text-sm text-gray-300">{profile.bio}</p>
         </div>
       )}
 
-      {/* Music taste */}
       <div className="card mb-4">
         <div className="flex items-center gap-2 mb-3">
           <Music2 size={16} className="text-brand-400" />
           <p className="text-xs text-gray-500 uppercase font-semibold">Music Taste</p>
         </div>
-        <div className="mb-3">
-          <p className="text-xs text-gray-600 mb-1.5">Favorite Artists</p>
-          <div className="flex flex-wrap gap-2">
-            {u.favoriteArtists.map(a => <span key={a} className="badge">{a}</span>)}
+        {artists.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs text-gray-600 mb-1.5">Favorite Artists</p>
+            <div className="flex flex-wrap gap-2">
+              {artists.map(a => <span key={a} className="badge">{a}</span>)}
+            </div>
           </div>
-        </div>
-        <div>
-          <p className="text-xs text-gray-600 mb-1.5">Genres</p>
-          <div className="flex flex-wrap gap-2">
-            {u.favoriteGenres.map(g => (
-              <span key={g} className="text-xs px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-300 border border-gray-700">{g}</span>
-            ))}
+        )}
+        {genres.length > 0 && (
+          <div>
+            <p className="text-xs text-gray-600 mb-1.5">Genres</p>
+            <div className="flex flex-wrap gap-2">
+              {genres.map(g => (
+                <span key={g} className="text-xs px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-300 border border-gray-700">{g}</span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+        {artists.length === 0 && genres.length === 0 && (
+          <p className="text-sm text-gray-600">No music preferences added yet.</p>
+        )}
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="card text-center">
-          <p className="text-2xl font-bold text-brand-400">{MATCHES.length}</p>
-          <p className="text-xs text-gray-500 mt-1">Total Matches</p>
+          <p className="text-2xl font-bold text-brand-400">{profile?.avg_rating ?? '—'}</p>
+          <p className="text-xs text-gray-500 mt-1">Avg Rating</p>
         </div>
         <div className="card text-center">
-          <p className="text-2xl font-bold text-brand-400">{u.avgRating ?? '—'}</p>
-          <p className="text-xs text-gray-500 mt-1">Avg Rating</p>
+          <p className="text-2xl font-bold text-brand-400">{profile?.is_admin ? 'Admin' : 'User'}</p>
+          <p className="text-xs text-gray-500 mt-1">Account Type</p>
         </div>
       </div>
     </div>
