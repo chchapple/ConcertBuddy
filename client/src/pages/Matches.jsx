@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { CalendarDays, MessageCircle } from 'lucide-react'
 import { getMatches } from '../api/index.js'
-import { MATCHES as MOCK_MATCHES, CURRENT_USER } from '../data/mockData'
+import { useAuth } from '../context/AuthContext.jsx'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -16,8 +16,8 @@ function timeAgo(iso) {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
-function normalizeMatch(m) {
-  const other = m.user1?.id === CURRENT_USER.id ? m.user2 : m.user1
+function normalizeMatch(m, myId) {
+  const other = m.user1?.id === myId ? m.user2 : m.user1
   return {
     ...m,
     profile: m.profile ?? (other ? { id: other.id, displayName: other.display_name, photoUrl: other.photo_url, avgRating: other.avg_rating } : null),
@@ -29,15 +29,18 @@ function normalizeMatch(m) {
 }
 
 export default function Matches() {
-  const [matches, setMatches] = useState(MOCK_MATCHES)
+  const { session } = useAuth()
+  const [matches, setMatches] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getMatches(CURRENT_USER.id)
-      .then(data => setMatches(data.map(normalizeMatch)))
-      .catch(() => setMatches(MOCK_MATCHES))
+    const uid = session?.user?.id
+    if (!uid) { setLoading(false); return }
+    getMatches(uid)
+      .then(data => setMatches(data.map(m => normalizeMatch(m, uid))))
+      .catch(() => setMatches([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [session])
 
   const active = matches.filter(m => m.active)
 
