@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Send, ArrowLeft, UserX, Flag } from 'lucide-react'
 import { getMessages, sendMessage as apiSendMessage } from '../api/index.js'
-import { MATCHES, MESSAGES as MOCK_MESSAGES, CURRENT_USER } from '../data/mockData'
+import { useAuth } from '../context/AuthContext.jsx'
 
 function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -10,8 +10,10 @@ function formatTime(iso) {
 
 export default function Chat() {
   const { id } = useParams()
-  const match = MATCHES.find(m => m.id === id)
-  const [messages, setMessages] = useState(MOCK_MESSAGES[id] || [])
+  const { session } = useAuth()
+  const myId = session?.user?.id
+  const [messages, setMessages] = useState([])
+  const [matchInfo, setMatchInfo] = useState(null)
   const [input, setInput] = useState('')
   const [showMenu, setShowMenu] = useState(false)
   const bottomRef = useRef(null)
@@ -19,36 +21,46 @@ export default function Chat() {
   useEffect(() => {
     getMessages(id)
       .then(data => setMessages(data.map(m => ({ ...m, senderId: m.senderId ?? m.sender_id, msgType: m.msgType ?? m.msg_type, createdAt: m.createdAt ?? m.created_at }))))
-      .catch(() => setMessages(MOCK_MESSAGES[id] || []))
+      .catch(() => setMessages([]))
+  }, [id])
+
+  useEffect(() => {
+    const BASE = import.meta.env.VITE_API_BASE_URL
+    fetch(`${BASE}/api/matches/${id}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setMatchInfo(data) })
+      .catch(() => {})
   }, [id])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  if (!match) return <p className="text-gray-400 text-center py-20">Match not found.</p>
+  const other = matchInfo ? (matchInfo.user1?.id === myId ? matchInfo.user2 : matchInfo.user1) : null
+  const otherName = other?.display_name ?? other?.displayName ?? 'Match'
+  const otherPhoto = other?.photo_url ?? other?.photoUrl ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`
+  const eventArtist = matchInfo?.events?.artist ?? matchInfo?.eventArtist ?? ''
 
   function handleSend(e) {
     e.preventDefault()
-    if (!input.trim()) return
-    const optimistic = { id: `msg_${Date.now()}`, senderId: CURRENT_USER.id, content: input.trim(), msgType: 'text', createdAt: new Date().toISOString() }
+    if (!input.trim() || !myId) return
+    const optimistic = { id: `msg_${Date.now()}`, senderId: myId, content: input.trim(), msgType: 'text', createdAt: new Date().toISOString() }
     setMessages(prev => [...prev, optimistic])
     setInput('')
-    apiSendMessage({ match_id: id, sender_id: CURRENT_USER.id, content: optimistic.content, msg_type: 'text' }).catch(() => {})
+    apiSendMessage({ match_id: id, sender_id: myId, content: optimistic.content, msg_type: 'text' }).catch(() => {})
   }
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <Link to="/matches" className="text-gray-400 hover:text-white transition">
+        <Link to="/messages" className="text-gray-400 hover:text-white transition">
           <ArrowLeft size={20} />
         </Link>
-        <img src={match.profile.photoUrl} alt={match.profile.displayName}
-          className="w-10 h-10 rounded-full object-cover" />
+        <img src={otherPhoto} alt={otherName} className="w-10 h-10 rounded-full object-cover" />
         <div className="flex-1">
-          <p className="font-semibold text-white text-sm">{match.profile.displayName}</p>
-          <p className="text-xs text-brand-400">{match.eventArtist}</p>
+          <p className="font-semibold text-white text-sm">{otherName}</p>
+          <p className="text-xs text-brand-400">{eventArtist}</p>
         </div>
         <div className="relative">
           <button onClick={() => setShowMenu(s => !s)}
@@ -71,7 +83,7 @@ export default function Chat() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto flex flex-col gap-3 pr-1">
         {messages.map(msg => {
-          const isMe = msg.senderId === CURRENT_USER.id
+          const isMe = msg.senderId === myId
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${

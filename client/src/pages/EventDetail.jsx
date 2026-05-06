@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { CalendarDays, MapPin, Users, Ticket, Star } from 'lucide-react'
 import { getEvent, getEventAttendees } from '../api/index.js'
-import { EVENTS, PROFILES } from '../data/mockData'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -40,11 +39,7 @@ export default function EventDetail() {
         setEvent(normalizeEvent(ev))
         setAttendees(att.map(normalizeProfile))
       })
-      .catch(() => {
-        const mock = EVENTS.find(e => e.id === id)
-        setEvent(mock || null)
-        setAttendees(PROFILES.slice(1, 4))
-      })
+      .catch(() => { setEvent(null); setAttendees([]) })
       .finally(() => setLoading(false))
   }, [id])
 
