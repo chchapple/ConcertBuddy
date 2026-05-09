@@ -44,7 +44,6 @@ router.get('/:id/attendees', async (req, res, next) => {
       .from('attendance')
       .select(`profiles(id, display_name, bio, age, gender, favorite_artists, favorite_genres, has_ride, photo_url, avg_rating)`)
       .eq('event_id', req.params.id)
-      .eq('ticket_verified', true)
 
     if (error) return next(error)
     const profiles = data.map(row => row.profiles).filter(Boolean)
