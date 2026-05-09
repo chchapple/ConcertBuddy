@@ -83,7 +83,7 @@ export default function EventDetail() {
       <div className="flex flex-col gap-2 mt-4 text-sm text-gray-400">
         <span className="flex items-center gap-2"><MapPin size={15} /> {event.venueName} · Chico, CA</span>
         <span className="flex items-center gap-2"><CalendarDays size={15} /> {formatDate(event.eventDate)}</span>
-        <span className="flex items-center gap-2"><Users size={15} /> {event.attendeeCount} verified attendees going</span>
+        <span className="flex items-center gap-2"><Users size={15} /> {attendees.length} {attendees.length === 1 ? 'person' : 'people'} going</span>
       </div>
 
       {/* Actions */}

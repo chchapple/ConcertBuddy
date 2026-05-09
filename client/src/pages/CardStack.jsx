@@ -65,7 +65,8 @@ function SwipeCard({ profile, onLike, onPass }) {
 }
 
 export default function CardStack() {
-  const { profile: me } = useAuth()
+  const { profile: me, session } = useAuth()
+  const myId = session?.user?.id
   const [deck, setDeck] = useState([])
   const [current, setCurrent] = useState(0)
   const [matched, setMatched] = useState(null)
@@ -74,8 +75,8 @@ export default function CardStack() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!me?.id) return
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance?user_id=${me.id}`)
+    if (!myId) return
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/attendance?user_id=${myId}`)
       .then(r => r.json())
       .then(async attendances => {
         if (!attendances?.length) { setLoading(false); return }
@@ -85,7 +86,7 @@ export default function CardStack() {
           const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/events/${eid}/attendees`)
           const att = await res.json()
           if (Array.isArray(att)) att.forEach(p => {
-            if (p.id !== me.id && p.id !== BOT_ID && !allProfiles.find(x => x.id === p.id))
+            if (p.id !== myId && p.id !== BOT_ID && !allProfiles.find(x => x.id === p.id))
               allProfiles.push(p)
           })
         }
