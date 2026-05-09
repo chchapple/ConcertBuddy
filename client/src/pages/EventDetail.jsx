@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { CalendarDays, MapPin, Users, Ticket, Star } from 'lucide-react'
-import { getEvent, getEventAttendees } from '../api/index.js'
+import { CalendarDays, MapPin, Users, CheckCircle2, Star } from 'lucide-react'
+import { getEvent, getEventAttendees, registerAttendance, getAttendance } from '../api/index.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -29,9 +30,13 @@ function normalizeProfile(p) {
 
 export default function EventDetail() {
   const { id } = useParams()
+  const { session } = useAuth()
+  const myId = session?.user?.id
   const [event, setEvent] = useState(null)
   const [attendees, setAttendees] = useState([])
   const [loading, setLoading] = useState(true)
+  const [going, setGoing] = useState(false)
+  const [markingGoing, setMarkingGoing] = useState(false)
 
   useEffect(() => {
     Promise.all([getEvent(id), getEventAttendees(id)])
@@ -42,6 +47,25 @@ export default function EventDetail() {
       .catch(() => { setEvent(null); setAttendees([]) })
       .finally(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (!myId) return
+    getAttendance({ user_id: myId, event_id: id })
+      .then(data => setGoing(Array.isArray(data) ? data.length > 0 : !!data))
+      .catch(() => {})
+  }, [id, myId])
+
+  async function handleMarkGoing() {
+    if (!myId || going) return
+    setMarkingGoing(true)
+    try {
+      await registerAttendance({ user_id: myId, event_id: id })
+      setGoing(true)
+      const att = await getEventAttendees(id)
+      setAttendees(att.map(normalizeProfile))
+    } catch (_) {}
+    setMarkingGoing(false)
+  }
 
   if (loading) return <p className="text-gray-400 text-center py-20">Loading…</p>
   if (!event)   return <p className="text-gray-400 text-center py-20">Event not found.</p>
@@ -63,13 +87,19 @@ export default function EventDetail() {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3 mt-6">
-        <Link to={`/events/${id}/swipe`} className="btn-primary flex-1 py-3">
-          Browse Attendees
-        </Link>
-        <a href={event.ticketUrl} className="btn-secondary flex-1 py-3 flex items-center justify-center gap-2">
-          <Ticket size={16} /> Get Tickets
-        </a>
+      <div className="mt-6">
+        <button
+          onClick={handleMarkGoing}
+          disabled={going || markingGoing}
+          className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition ${
+            going
+              ? 'bg-green-900/40 border border-green-700 text-green-400 cursor-default'
+              : 'btn-primary'
+          }`}
+        >
+          <CheckCircle2 size={18} />
+          {going ? "You're Going!" : markingGoing ? 'Saving…' : "Mark as Going"}
+        </button>
       </div>
 
       {/* Attendee preview */}
